@@ -2,7 +2,7 @@
 # Docker VNC manifest
 # -----------------------------
 # To run this docker image:
-#   docker build -f Dockerfile.vnc -t msx-tile-forge-vnc .
+#   sudo docker build -f Dockerfile.vnc -t msx-tile-forge-vnc .
 #   docker run -d --name msx-tf -p 5901:5901 -p 6080:6080 -v $(pwd)/data:/app/data msx-tile-forge-vnc
 #   open http://localhost:6080 
 # -----------------------------
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY . /app
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+#RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose VNC port
 EXPOSE 5900

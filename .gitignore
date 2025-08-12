@@ -179,3 +179,5 @@ cython_debug/
 
 # Deploy stuff
 deploy/
+.flatpak-builder/
+data/

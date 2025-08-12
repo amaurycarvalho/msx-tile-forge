@@ -26,8 +26,7 @@ jobs:
             flatpak flatpak-builder \
             build-essential devscripts dh-python python3-all \
             gzip
-          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
+      # flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
       # Build all artifacts using Makefile
       - name: 🏗 Build all artifacts
         run: |
