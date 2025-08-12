@@ -1,0 +1,43 @@
+# -----------------------------
+# Docker VNC manifest
+# -----------------------------
+# To run this docker image:
+#   docker build -f Dockerfile.vnc -t msx-tile-forge-vnc .
+#   docker run -d --name msx-tf -p 5901:5901 -p 6080:6080 -v $(pwd)/data:/app/data msx-tile-forge-vnc
+#   open http://localhost:6080 
+# -----------------------------
+
+FROM python:3.11-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    x11vnc xvfb fluxbox \
+    python3-tk python3-pil python3-pil.imagetk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set default display for X11 apps
+ENV DISPLAY=:0
+
+# Create working directory
+WORKDIR /app
+
+# Copy project
+COPY . /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose VNC port
+EXPOSE 5900
+
+# Create autostart script
+RUN echo '#!/bin/bash\n\
+Xvfb :0 -screen 0 1024x768x16 &\n\
+sleep 2\n\
+fluxbox &\n\
+x11vnc -display :0 -forever -nopw -listen 0.0.0.0 &\n\
+python3 msx_tile_forge.py\n' > /app/start.sh && chmod +x /app/start.sh
+
+# Set default command to run autostart script
+CMD ["/app/start.sh"]
+

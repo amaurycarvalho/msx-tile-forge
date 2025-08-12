@@ -1,0 +1,39 @@
+# --------------------
+# Flatpak manifest
+# --------------------
+app-id: org.msx.TileForge
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.python3
+command: msxtileforge
+finish-args:
+  # Allow showing GUI
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  # Allow reading/writing user files
+  - --filesystem=home
+modules:
+  - name: python3
+    buildsystem: simple
+    build-commands:
+      - /usr/lib/sdk/python3/install.sh
+
+  - name: msx-tile-forge
+    buildsystem: simple
+    build-commands:
+      # Install Python dependencies
+      - pip3 install --prefix=${FLATPAK_DEST} Pillow numpy scipy platformdirs tqdm
+      # Copy main app
+      - install -D msxtileforge.py ${FLATPAK_DEST}/bin/msxtileforge
+      - chmod +x ${FLATPAK_DEST}/bin/msxtileforge
+      # Install desktop entry
+      - install -D Resources/org.msx.TileForge.desktop ${FLATPAK_DEST}/share/applications/org.msx.TileForge.desktop
+      # Install icon (adjust size/path if you have your own icon file)
+      - install -D Resources/Icon.png ${FLATPAK_DEST}/share/icons/hicolor/128x128/apps/org.msx.TileForge.png
+    sources:
+      - type: git
+        url: https://github.com/DamnedAngel/msx-tile-forge.git
+        branch: main
