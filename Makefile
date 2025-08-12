@@ -17,7 +17,7 @@
 DOCKER_IMAGE_NAME = msx-tile-forge-vnc
 DOCKER_TAG = latest
 DEPLOY_DIR = deploy
-FLATPAK_MANIFEST = org.msx.TileForge.yaml
+FLATPAK_MANIFEST = org.damnedangel.msxtileforge.yaml
 APP_ID = org.msx.TileForge
 DEB_PACKAGE = msx-tile-forge_*.deb
 

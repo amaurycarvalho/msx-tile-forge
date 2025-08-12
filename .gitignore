@@ -178,4 +178,4 @@ cython_debug/
 /diag.py
 
 # Deploy stuff
-Deploy/
+deploy/
