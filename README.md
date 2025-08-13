@@ -147,16 +147,16 @@ To run MSX Tile Forge and use all its features, your system will need the follow
 
 Download or [clone](https://github.com/DamnedAngel/msx-tile-forge.git) the [msxtileforge.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtileforge.py) script and its required companion script [msxtilemagic.py](https://github.com/DamnedAngel/msx-tile-forge/blob/master/msxtilemagic.py). **Both files must be in the same directory for the application to function correctly.**
 
-Also, you can download an install package from [GitHub releases](https://github.com/DamnedAngel/msx-tile-forge/releases) area.
+Also, you can download an install package from [GitHub releases](https://github.com/DamnedAngel/msx-tile-forge/releases) assets area.
 
 *   **Linux**
-    * Install via debian package (.deb) or download the correspondent binary.
+    * Install via debian package (.deb) or download the correspondent binary asset (msxtileforge-*-linux-x64-bin.zip).
  
 *   **Windows**
-    * Download the correspondent binary.
+    * Download the correspondent binary asset (msxtileforge-*-windows-x64-bin.zip).
 
 *   **MacOS**
-    * Download the correspondent binary.
+    * Download the correspondent binary asset (msxtileforge-*-mac-x86_64-bin.zip).
 
 ### Running the Application
 
