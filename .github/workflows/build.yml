@@ -15,6 +15,8 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts build-essential dh-python python3-all
           pip3 install pyinstaller Pillow numpy scipy platformdirs tqdm
       - name: Build all artifacts
         run: make clean release debian
