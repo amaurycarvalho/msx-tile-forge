@@ -7,33 +7,20 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  build:
+    name: Build all
+    uses: ./.github/workflows/build_all.yml
+
   build-and-release:
     runs-on: ubuntu-latest
-
+    needs: build
+    permissions: write-all
     steps:
-      # Checkout code
-      - name: 📥 Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Ensure tags are available
-
-      # Install dependencies for all build targets
-      - name: 🛠 Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            docker.io \
-            flatpak flatpak-builder \
-            build-essential devscripts dh-python python3-all \
-            gzip
-      # flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-      # Build all artifacts using Makefile
-      - name: 🏗 Build all artifacts
-        run: |
-          make all
-
-      # Detect version and pre-release status
-      - name: 🔍 Determine release version
+      - name: Determine release version
         id: get_version
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
@@ -45,14 +32,27 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-
-      # Create GitHub Release
-      - name: 📦 Create GitHub Release
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Prepare artifacts
+        run: |
+          mv msxtileforge-linux-x64-bin/*.deb dist
+          zip --junk-paths \
+            dist/msxtileforge-${{ steps.get_version.outputs.version }}-linux-x64-bin.zip \
+            msxtileforge-linux-x64-bin/msxtileforge
+          zip --junk-paths \
+            dist/msxtileforge-${{ steps.get_version.outputs.version }}-windows-x64-bin.zip \
+            msxtileforge-windows-x64-bin/*
+          zip --junk-paths \
+            dist/msxtileforge-${{ steps.get_version.outputs.version }}-mac-x86_64-bin.zip \
+            msxtileforge-mac-x86_64-bin/*
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: "Release ${{ steps.get_version.outputs.version }}"
-          files: deploy/*
+          files: dist/*
           prerelease: ${{ steps.get_version.outputs.prerelease }}
+          body_path: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
