@@ -16,11 +16,8 @@ DEB_PACKAGE = msx-tile-forge_*.deb
 
 .PHONY: all clean release debian prepare
 
-all: prepare release debian 
+all: clean release debian 
 	@echo "✅ All builds completed. Files in $(DEPLOY_DIR)/"
-
-prepare:
-	@mkdir -p $(DEPLOY_DIR)
 
 # ----------------------------
 # App build
@@ -52,5 +49,6 @@ debian:
 # ----------------------------
 clean:
 	@echo "🧹 Cleaning build artifacts..."
+	@mkdir -p $(DEPLOY_DIR)
 	rm -rf $(DEPLOY_DIR)/*
 	@echo "✅ Clean complete."
