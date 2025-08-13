@@ -4,7 +4,12 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch to run the workflow on'
+        required: true
+        default: 'main'
 
 jobs:
   build:
