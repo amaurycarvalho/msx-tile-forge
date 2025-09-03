@@ -8,8 +8,8 @@ HELPER_SCRIPTS = msxtileexport.py msxtilemagic.py tilerandomizer.py supertileran
 
 # Define default output filenames. These can be overridden from the command line.
 # Example: make win WIN_ZIP="my_custom_name_win.zip"
-WIN_ZIP ?= msxtileforge_win.zip
 LIN_TGZ ?= msxtileforge_lin.tar.gz
+WIN_ZIP ?= msxtileforge_win.zip
 MAC_ZIP ?= msxtileforge_mac.zip
 SRC_ZIP ?= msxtileforge_src.zip
 
@@ -37,11 +37,11 @@ common:
 		--noconfirm $(MAIN_SCRIPT)
 	cp README.md LICENSE $(TARGET_DIR)
 
-all-mac: build-common
-	cd dist && zip -r $(MAC_ZIP) $(MAIN_SCRIPT:.py=)
-
 all-win: prepackage common
 	cd dist && powershell Compress-Archive -Force -Path $(MAIN_SCRIPT:.py=) -DestinationPath $(WIN_ZIP)
+
+all-mac: prepackage build-common
+	cd dist && zip -r $(MAC_ZIP) $(MAIN_SCRIPT:.py=)
 
 all-lin: prepackage common
 	cd dist && tar -czvf $(LIN_TGZ) $(MAIN_SCRIPT:.py=)
