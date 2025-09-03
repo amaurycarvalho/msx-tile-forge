@@ -14,6 +14,7 @@ jobs:
       debian_version: ${{ steps.versioning.outputs.DEBIAN_VERSION }}
       prepared_source_artifact_name: ${{ steps.versioning.outputs.PREPARED_SOURCE_ARTIFACT_NAME }}
       win_filename: ${{ steps.versioning.outputs.WIN_FILENAME }}
+      mac_filename: ${{ steps.versioning.outputs.MAC_FILENAME }}
       lin_filename: ${{ steps.versioning.outputs.LIN_FILENAME }}
       deb_filename: ${{ steps.versioning.outputs.DEB_FILENAME }}
       src_filename: ${{ steps.versioning.outputs.SRC_FILENAME }}
