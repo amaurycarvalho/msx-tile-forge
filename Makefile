@@ -40,7 +40,7 @@ common:
 all-win: prepackage common
 	cd dist && powershell Compress-Archive -Force -Path $(MAIN_SCRIPT:.py=) -DestinationPath $(WIN_ZIP)
 
-all-mac: prepackage build-common
+all-mac: prepackage common
 	cd dist && zip -r $(MAC_ZIP) $(MAIN_SCRIPT:.py=)
 
 all-lin: prepackage common
