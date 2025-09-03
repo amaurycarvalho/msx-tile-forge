@@ -10,6 +10,7 @@ HELPER_SCRIPTS = msxtileexport.py msxtilemagic.py tilerandomizer.py supertileran
 # Example: make win WIN_ZIP="my_custom_name_win.zip"
 WIN_ZIP ?= msxtileforge_win.zip
 LIN_TGZ ?= msxtileforge_lin.tar.gz
+MAC_ZIP ?= msxtileforge_mac.zip
 SRC_ZIP ?= msxtileforge_src.zip
 
 ifeq ($(OS),Windows_NT)
@@ -36,6 +37,9 @@ common:
 		--noconfirm $(MAIN_SCRIPT)
 	cp README.md LICENSE $(TARGET_DIR)
 
+all-mac: build-common
+	cd dist && zip -r $(MAC_ZIP) $(MAIN_SCRIPT:.py=)
+
 all-win: prepackage common
 	cd dist && powershell Compress-Archive -Force -Path $(MAIN_SCRIPT:.py=) -DestinationPath $(WIN_ZIP)
 
@@ -58,4 +62,4 @@ clean:
 	rm -rf build dist *.spec
 	rm -f ../msxtileforge_*.deb ../msxtileforge_*.buildinfo ../msxtileforge_*.changes
 
-.PHONY: all all-win all-lin build-common deb sdist clean
+.PHONY: all all-mac all-win all-lin build-common deb sdist clean

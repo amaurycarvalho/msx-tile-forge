@@ -48,6 +48,7 @@ jobs:
           echo "WIN_FILENAME=${BASE_NAME}_win.zip" >> $GITHUB_OUTPUT
           echo "LIN_FILENAME=${BASE_NAME}_lin.tar.gz" >> $GITHUB_OUTPUT
           echo "DEB_FILENAME=${BASE_NAME}_deb.deb" >> $GITHUB_OUTPUT
+          echo "MAC_FILENAME=${BASE_NAME}_mac.zip" >> $GITHUB_OUTPUT
           echo "SRC_FILENAME=${BASE_NAME}_src.zip" >> $GITHUB_OUTPUT
 
   #########################################
@@ -95,6 +96,14 @@ jobs:
       prepared_source_artifact_name: ${{ needs.generate-version.outputs.prepared_source_artifact_name }}
       win_filename: ${{ needs.generate-version.outputs.win_filename }}
 
+  build-macos:
+    name: Call macOS Builder
+    needs: [generate-version, prepare-source]
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      prepared_source_artifact_name: ${{ needs.generate-version.outputs.prepared_source_artifact_name }}
+      mac_filename: ${{ needs.generate-version.outputs.mac_filename }}
+
   build-source:
     name: Call Source Builder
     needs: [generate-version, prepare-source]
@@ -108,7 +117,7 @@ jobs:
   #########################################
   publish:
     name: Publish to Internet Archive
-    needs: [generate-version, build-linux, build-windows, build-source]
+    needs: [generate-version, build-linux, build-windows, build-macos, build-source]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target branch
@@ -137,7 +146,7 @@ jobs:
           
           # This is the fix: Explicitly find only the top-level package files.
           # The '*/' ensures we are looking inside the artifact subdirectories.
-          PACKAGE_FILES=$(find . -maxdepth 2 -type f \( -name "*_win.zip" -o -name "*_lin.tar.gz" -o -name "*_deb.deb" -o -name "*_src.zip" \))
+          PACKAGE_FILES=$(find . -maxdepth 2 -type f \( -name "*_win.zip" -o -name "*_lin.tar.gz" -o -name "*_mac.zip" -o -name "*_deb.deb" -o -name "*_src.zip" \))
 
           for FILE in $PACKAGE_FILES; do
             FILENAME=$(basename "$FILE")

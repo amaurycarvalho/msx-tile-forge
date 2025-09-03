@@ -1,0 +1,39 @@
+name: Reusable macOS Build
+
+on:
+  workflow_call:
+    inputs:
+      prepared_source_artifact_name:
+        description: 'The name of the prepared source code artifact to download'
+        required: true
+        type: string
+      mac_filename:
+        description: 'The final, desired filename for the .zip package'
+        required: true
+        type: string
+
+jobs:
+  build_mac:
+    runs-on: macos-latest
+    steps:
+      - name: Download prepared source code
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.prepared_source_artifact_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python Dependencies via Pip
+        run: python -m pip install -r requirements.txt
+
+      - name: Build macOS binary and archive
+        run: make all-mac MAC_ZIP=${{ inputs.mac_filename }}
+
+      - name: Upload macOS zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.mac_filename }}
+          path: dist/${{ inputs.mac_filename }}
