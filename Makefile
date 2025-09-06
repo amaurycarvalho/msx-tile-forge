@@ -8,8 +8,9 @@ HELPER_SCRIPTS = msxtileexport.py msxtilemagic.py tilerandomizer.py supertileran
 
 # Define default output filenames. These can be overridden from the command line.
 # Example: make win WIN_ZIP="my_custom_name_win.zip"
-WIN_ZIP ?= msxtileforge_win.zip
 LIN_TGZ ?= msxtileforge_lin.tar.gz
+WIN_ZIP ?= msxtileforge_win.zip
+MAC_ZIP ?= msxtileforge_mac.zip
 SRC_ZIP ?= msxtileforge_src.zip
 
 ifeq ($(OS),Windows_NT)
@@ -61,4 +62,4 @@ clean:
 	rm -rf build dist *.spec
 	rm -f ../msxtileforge_*.deb ../msxtileforge_*.buildinfo ../msxtileforge_*.changes
 
-.PHONY: all all-win all-lin build-common deb sdist clean
+.PHONY: all all-mac all-win all-lin build-common deb sdist clean

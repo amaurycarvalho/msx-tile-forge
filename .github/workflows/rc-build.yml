@@ -109,6 +109,14 @@ jobs:
       prepared_source_artifact_name: ${{ needs.generate-version.outputs.prepared_source_artifact_name }}
       win_filename: ${{ needs.generate-version.outputs.win_filename }}
 
+  build-macos:
+    name: Call macOS Builder
+    needs: [generate-version, prepare-source]
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      prepared_source_artifact_name: ${{ needs.generate-version.outputs.prepared_source_artifact_name }}
+      mac_filename: ${{ needs.generate-version.outputs.mac_filename }}
+
   build-source:
     name: Call Source Builder
     needs: [generate-version, prepare-source]
@@ -122,7 +130,7 @@ jobs:
   #########################################
   publish-pre-release:
     name: Publish Pre-release
-    needs: [generate-version, build-linux, build-windows, build-source]
+    needs: [generate-version, build-linux, build-windows, build-macos, build-source]
     runs-on: ubuntu-latest
     steps:
       - name: Download all final build artifacts
