@@ -11,6 +11,8 @@ SPLASH_IMAGE = r"iVBORw0KGgoAAAANSUhEUgAAAVQAAAGPCAIAAACMCb8OAAAAAXNSR0IArs4c6QA
 # ICON_IMAGE = r"iVBORw0"
 # SPLASH_IMAGE = r"iVBORw0"
 
+import argparse
+import multiprocessing
 import json
 import warnings
 import platformdirs
@@ -17210,7 +17212,7 @@ class TileEditorApp:
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    import argparse
+    multiprocessing.freeze_support()
     import webbrowser # Import for the splash screen link
     import tkinter.font as font # Import for the splash screen link font
 

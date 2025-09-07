@@ -320,7 +320,7 @@ def find_best_tiling_offset(quantized_image, num_cores):
     results = []
     init_args = (img_data,)
     with multiprocessing.Pool(processes=num_cores, initializer=_offset_worker_initializer, initargs=init_args) as pool:
-        for result in tqdm(pool.imap_unordered(_calculate_offset_score_worker, tasks), total=len(tasks), desc="   Finding best offset", leave=False, unit="offset"):
+        for result in tqdm(pool.imap_unordered(_calculate_offset_score_worker, tasks), total=len(tasks), desc="   Finding best offset", leave=False, unit="offset", file=sys.stdout or sys.__stdout__):
             results.append(result)
             
     if not results:
@@ -477,16 +477,22 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         print(f"   Initializing worker pool and transferring data to {num_cores} cores.\r\n      -> This may take some seconds, please wait..")
         chunksize = max(1, len(all_pairs) // (num_cores * 16))
         init_args = (active_tiles, palette_255, color_metric)
+        print(f"   Hello 0")
         with multiprocessing.Pool(processes=num_cores, initializer=_init_worker, initargs=init_args) as pool:
-            for result in tqdm(pool.imap_unordered(_calculate_initial_costs_worker, all_pairs, chunksize=chunksize), total=len(all_pairs), desc="   Pre-calculating costs", mininterval=10.0):
+            print(f"   Hello 0.1")
+            for result in tqdm(pool.imap_unordered(_calculate_initial_costs_worker, all_pairs, chunksize=chunksize), total=len(all_pairs), desc="   Pre-calculating costs", mininterval=10.0, file=sys.stdout or sys.__stdout__):
                 if result:
                     cost, idx1, idx2 = result
                     heapq.heappush(merge_heap, result)
                     similarity_map[idx1].append((cost, idx2))
                     similarity_map[idx2].append((cost, idx1))
 
+        print(f"   Hello 1")
+
     for idx in similarity_map:
         similarity_map[idx].sort()
+
+        print(f"   Hello 2")
 
     # --- Step 2: Merge tiles if necessary ---
     if initial_unique_count > max_tiles:
@@ -494,7 +500,7 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         print(f"   Performing {num_merges_to_perform} merges to reach target of {max_tiles} tiles...")
         is_active = {idx: True for idx in active_tiles.keys()}
         
-        with tqdm(total=num_merges_to_perform, desc="   Merging tiles") as pbar:
+        with tqdm(total=num_merges_to_perform, desc="   Merging tiles", file=sys.stdout or sys.__stdout__) as pbar:
             merges_done = 0
             while merges_done < num_merges_to_perform and merge_heap:
                 cost, idx1, idx2 = heapq.heappop(merge_heap)
@@ -1011,7 +1017,7 @@ def main():
     metric_palette_255 = [(r*255//7, g*255//7, b*255//7) for r,g,b in metric_working_palette_0_7]
 
     quantized_np_indices = np.array(quantized_pil_image.getdata(), dtype=np.uint8).reshape((img_height, img_width))
-    for ty in tqdm(range(tile_map_height), desc="   Processing Tiles"):
+    for ty in tqdm(range(tile_map_height), desc="   Processing Tiles", file=sys.stdout or sys.__stdout__):
         for tx in range(tile_map_width):
             tile_block = quantized_np_indices[ty*8:(ty+1)*8, tx*8:(tx+1)*8]
             all_source_tiles_quantized.append(tile_block)
