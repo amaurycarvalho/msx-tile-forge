@@ -30,6 +30,7 @@ prepackage:
 common:
 	$(PYTHON) -m pip install -r requirements.txt
 	$(PYTHON) -m PyInstaller --noconsole --onedir --clean \
+		--hidden-import=tqdm \
 		--add-data "msxtileexport.py:." \
 		--add-data "msxtilemagic.py:." \
 		--add-data "tilerandomizer.py:." \
