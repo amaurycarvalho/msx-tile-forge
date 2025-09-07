@@ -528,7 +528,7 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
     if synthesize and initial_unique_count > max_tiles:
         print("   Synthesizing ideal tiles for merged groups...")
         color_dist_func = get_color_distance_function(color_metric)
-        for tile_info in tqdm(active_tiles.values(), desc="   Synthesizing"):
+        for tile_info in tqdm(active_tiles.values(), desc="   Synthesizing", file=sys.stdout or sys.__stdout__):
             if len(tile_info["original_indices"]) > 1:
                 group_locations = []
                 for original_unique_idx in tile_info["original_indices"]:
@@ -1114,7 +1114,7 @@ def main():
             chunksize = max(1, len(st_pairs) // (args.cores * 16))
 
             with multiprocessing.Pool(processes=args.cores, initializer=_init_supertile_worker, initargs=init_args) as pool:
-                for dist, idx1, idx2 in tqdm(pool.imap_unordered(_calculate_supertile_cost_worker, st_pairs, chunksize=chunksize), total=len(st_pairs), desc="   Clustering supertiles", leave=False):
+                for dist, idx1, idx2 in tqdm(pool.imap_unordered(_calculate_supertile_cost_worker, st_pairs, chunksize=chunksize), total=len(st_pairs), desc="   Clustering supertiles", leave=False, file=sys.stdout or sys.__stdout__):
                     st_similarity_map[idx1].append((dist, idx2))
                     st_similarity_map[idx2].append((dist, idx1))
 
