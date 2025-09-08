@@ -323,7 +323,6 @@ def find_best_tiling_offset(quantized_image, num_cores):
     results = []
     init_args = (img_data,)
     with multiprocessing.Pool(processes=num_cores, initializer=_offset_worker_initializer, initargs=init_args) as pool:
-        print ("tqdm1 below...")
         for result in tqdm(pool.imap_unordered(_calculate_offset_score_worker, tasks), total=len(tasks), desc="   Finding best offset", unit=" offsets", **tqdm_kwargs):
             results.append(result)
             
@@ -482,7 +481,6 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         chunksize = max(1, len(all_pairs) // (num_cores * 16))
         init_args = (active_tiles, palette_255, color_metric)
         with multiprocessing.Pool(processes=num_cores, initializer=_init_worker, initargs=init_args) as pool:
-            print ("tqdm2 below...")
             tqdm_kwargs_for_costs = tqdm_kwargs.copy()
             tqdm_kwargs_for_costs['mininterval']=10.0
             for result in tqdm(pool.imap_unordered(_calculate_initial_costs_worker, all_pairs, chunksize=chunksize), total=len(all_pairs), desc="   Pre-calculating costs", unit=" tile pairs", **tqdm_kwargs):
@@ -501,7 +499,6 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         print(f"   Performing {num_merges_to_perform} merges to reach target of {max_tiles} tiles...")
         is_active = {idx: True for idx in active_tiles.keys()}
         
-        print ("tqdm3 below...")
         with tqdm(total=num_merges_to_perform, desc="   Merging tiles", unit=" merges", **tqdm_kwargs) as pbar:
             merges_done = 0
             while merges_done < num_merges_to_perform and merge_heap:
@@ -530,7 +527,6 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
     if synthesize and initial_unique_count > max_tiles:
         print("   Synthesizing ideal tiles for merged groups...")
         color_dist_func = get_color_distance_function(color_metric)
-        print ("tqdm4 below...")
         for tile_info in tqdm(active_tiles.values(), desc="   Synthesizing", unit=" tiles", **tqdm_kwargs):
             if len(tile_info["original_indices"]) > 1:
                 group_locations = []
@@ -1025,7 +1021,6 @@ def main():
     metric_palette_255 = [(r*255//7, g*255//7, b*255//7) for r,g,b in metric_working_palette_0_7]
 
     quantized_np_indices = np.array(quantized_pil_image.getdata(), dtype=np.uint8).reshape((img_height, img_width))
-    print ("tqdm5 below...")
     for ty in tqdm(range(tile_map_height), desc="   Processing Tiles", unit=" map rows", **tqdm_kwargs):
         for tx in range(tile_map_width):
             tile_block = quantized_np_indices[ty*8:(ty+1)*8, tx*8:(tx+1)*8]
@@ -1123,7 +1118,6 @@ def main():
             chunksize = max(1, len(st_pairs) // (args.cores * 16))
 
             with multiprocessing.Pool(processes=args.cores, initializer=_init_supertile_worker, initargs=init_args) as pool:
-                print ("tqdm6 below...")
                 for dist, idx1, idx2 in tqdm(pool.imap_unordered(_calculate_supertile_cost_worker, st_pairs, chunksize=chunksize), total=len(st_pairs), desc="   Clustering supertiles", unit=" supertile pairs", **tqdm_kwargs):
                     st_similarity_map[idx1].append((dist, idx2))
                     st_similarity_map[idx2].append((dist, idx1))
@@ -1197,4 +1191,5 @@ def main():
     print("\nProcessing complete.")
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.exit(exit_code)

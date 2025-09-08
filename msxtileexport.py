@@ -10,9 +10,6 @@ import struct
 import math
 import argparse
 
-# Force stdout to use UTF-8 encoding
-sys.stdout.reconfigure(encoding='utf-8')
-
 # --- Constants ---
 MSXTILEFORGE_VERSION = APP_VERSION
 EXPORTER_VERSION = APP_VERSION
@@ -267,31 +264,32 @@ PROJECT_MAP_INDEX_SIZE: .equ {map_index_size}
             f.write("\n};\n\n")
 
             # Map Data
+            # Determine the index size based on the actual size of the loaded map data buffer.
+            map_index_size = 2 if len(self.map_data) > (self.map_width * self.map_height) else 1
+
             f.write("// --- Map Data ---\n")
-            f.write(f"#if PROJECT_MAP_INDEX_SIZE == 1\n")
-            f.write(f"const uint8_t map_data[PROJECT_MAP_HEIGHT][PROJECT_MAP_WIDTH] = {{\n")
-            for r in range(self.map_height):
-                row_data = self.map_data[r*self.map_width:(r+1)*self.map_width]
-                f.write("    {" + ", ".join(map(str, row_data)) + "}")
-                if r < self.map_height - 1: f.write(",\n")
-            f.write("\n};\n")
-            f.write("#else // PROJECT_MAP_INDEX_SIZE == 2\n")
-            f.write(f"const uint16_t map_data[PROJECT_MAP_HEIGHT][PROJECT_MAP_WIDTH] = {{\n")
-            for r in range(self.map_height):
-                row_str = ""
-                for c in range(self.map_width):
-                    offset = (r * self.map_width + c) * 2
-                    val = struct.unpack("<H", self.map_data[offset:offset+2])[0]
-                    row_str += str(val) + ", "
-                f.write("    {" + row_str.rstrip(", ") + "}")
-                if r < self.map_height - 1: f.write(",\n")
-            f.write("\n};\n")
-            f.write("#endif\n\n")
+            if map_index_size == 1:
+                f.write(f"const uint8_t map_data[PROJECT_MAP_HEIGHT][PROJECT_MAP_WIDTH] = {{\n")
+                for r in range(self.map_height):
+                    row_data = self.map_data[r*self.map_width:(r+1)*self.map_width]
+                    f.write("    {" + ", ".join(map(str, row_data)) + "}")
+                    if r < self.map_height - 1: f.write(",\n")
+            else: # map_index_size must be 2
+                f.write(f"const uint16_t map_data[PROJECT_MAP_HEIGHT][PROJECT_MAP_WIDTH] = {{\n")
+                for r in range(self.map_height):
+                    row_str = ""
+                    for c in range(self.map_width):
+                        offset = (r * self.map_width + c) * 2
+                        val = struct.unpack("<H", self.map_data[offset:offset+2])[0]
+                        row_str += str(val) + ", "
+                    f.write("    {" + row_str.rstrip(", ") + "}")
+                    if r < self.map_height - 1: f.write(",\n")
+            f.write("\n};\n\n")
 
             f.write(f"#endif // {header_guard}\n")
         print(f"Generated C data header: {os.path.basename(filepath)}")
 
-if __name__ == "__main__":
+def main():
     print_splash_header(MSXTILEFORGE_VERSION, EXPORTER_VERSION)
 
     parser = argparse.ArgumentParser(description="Exports MSX Tile Forge projects to raw binary and include files.",
@@ -339,8 +337,12 @@ if __name__ == "__main__":
             converter.generate_c_header_data(data_h_filepath, args.output_basename)
         
         print("\nExport complete.")
-        sys.exit(0)
+        return 0
 
     except Exception as e:
-        print(f"\nERROR: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"\nERROR: {e}")
+        return 1
+
+if __name__ == "__main__":
+    exit_code = main()
+    sys.exit(exit_code)

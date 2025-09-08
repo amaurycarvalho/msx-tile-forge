@@ -299,9 +299,20 @@ class ScriptRunnerDialog(tk.Toplevel):
 
     def _on_script_finished(self, success):
         # Internal callback to handle script completion.
-        self.close_button.config(state=tk.NORMAL)
+        _debug(f"[ScriptRunnerDialog._on_script_finished] Called with success: {success}")
+
+        # Only modify widgets if the window still exists.
+        if self.winfo_exists():
+            self.close_button.config(state=tk.NORMAL)
+            _debug("[ScriptRunnerDialog._on_script_finished] Close button enabled.")
+        else:
+            _debug("[ScriptRunnerDialog._on_script_finished] Window no longer exists. Skipping button configuration.")
+
+        # Call the original on_complete callback that was passed in.
         if self.on_complete:
+            _debug("[ScriptRunnerDialog._on_script_finished] Calling the final on_complete callback.")
             self.on_complete(success)
+        _debug("[ScriptRunnerDialog._on_script_finished] Method has completed.")
 
     def _on_attempt_close(self):
         # Prevents closing the window while the script is running.
@@ -2555,6 +2566,7 @@ class SupertileUsageWindow(tk.Toplevel):
         if self.tree.cget("cursor") != new_cursor:
             self.tree.config(cursor=new_cursor)
 
+# --- Export Dialog Class -----------------------------------------------------------------------------------------------
 class ExportDialog(tk.Toplevel):
     def __init__(self, parent, app_instance, project_path):
         super().__init__(parent)
@@ -2599,25 +2611,18 @@ class ExportDialog(tk.Toplevel):
         asm_check.pack(anchor="w", padx=10, pady=2)
         c_check = ttk.Checkbutton(options_frame, text="C Header Files (.h)", variable=self.gen_c_header_var)
         c_check.pack(anchor="w", padx=10, pady=2)
-
-        # Log
-        log_frame = ttk.LabelFrame(main_frame, text="Export Log")
-        log_frame.pack(padx=5, pady=10, fill=tk.BOTH, expand=True)
-        self.log_text = tk.Text(log_frame, height=12, width=80, wrap=tk.WORD, state=tk.DISABLED, bg="#2E2E2E", fg="#D0D0D0", font=("Consolas", 9))
-        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        self.log_text['yscrollcommand'] = scrollbar.set
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(padx=5, pady=(5, 0))
+        button_frame.pack(padx=5, pady=(15, 0)) # Added more top padding
+        # The Export button now just starts the process. The ScriptRunnerDialog handles button states.
         self.export_button = ttk.Button(button_frame, text="Export", command=self.start_export)
-        self.close_button = ttk.Button(button_frame, text="Close", command=self.on_close)
+        # The Cancel button now simply destroys this dialog.
+        self.cancel_button = ttk.Button(button_frame, text="Cancel", command=self.destroy)
         self.export_button.pack(side=tk.LEFT, padx=5)
-        self.close_button.pack(side=tk.LEFT, padx=5)
+        self.cancel_button.pack(side=tk.LEFT, padx=5)
         
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.center_window()
 
     def center_window(self):
@@ -2640,7 +2645,7 @@ class ExportDialog(tk.Toplevel):
             messagebox.showerror("Input Error", "Output directory and basename cannot be empty.", parent=self)
             return
 
-        # Use the unified helper to get the script path.
+        # Use the unified helper to get the script path, fixing the pathing bug.
         cli_script = self.parent_app._get_script_path("msxtileexport.py")
         
         if not os.path.exists(cli_script):
@@ -2649,7 +2654,6 @@ class ExportDialog(tk.Toplevel):
 
         source_file = self.project_path + ".SC4Map"
 
-        # Assemble the command list, same as before.
         command = [
             cli_script,
             source_file,
@@ -2662,25 +2666,21 @@ class ExportDialog(tk.Toplevel):
             command.append("--c-header")
         
         # Instantiate and run the unified script runner dialog.
-        # It is now responsible for the log window and running the script.
         ScriptRunnerDialog(
-            parent=self,
+            parent=self.parent_app.root, # Make it modal to the main app window
             title="Exporting Project...",
             command_list=command,
             on_complete_callback=self.on_export_complete
         )
 
+        # Now that the new dialog has been launched, this dialog's job is done.
+        self.destroy()
+
     def on_export_complete(self, success=True):
-        self.export_button.config(state=tk.NORMAL)
-        self.close_button.config(state=tk.NORMAL)
+        # This callback is called by the ScriptRunnerDialog when it closes.
+        # Its only job is to show the final status message.
         if success:
-            messagebox.showinfo("Export Complete", "Export process finished successfully.", parent=self)
-        
-    def on_close(self):
-        if self.export_button['state'] == tk.DISABLED:
-            messagebox.showwarning("Export in Progress", "Please wait for the process to complete.", parent=self)
-        else:
-            self.destroy()
+            messagebox.showinfo("Export Complete", "Export process finished successfully.", parent=self.parent_app.root)
 
 class ImageImportDialog(tk.Toplevel):
     def __init__(self, parent, app_instance, image_path):
