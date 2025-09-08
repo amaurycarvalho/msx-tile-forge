@@ -17247,15 +17247,11 @@ class TileEditorApp:
                 # This is a ONE-FOLDER bundle. The base path is the directory
                 # of the executable itself.
                 base_path = os.path.dirname(os.path.abspath(sys.executable))
-            
-            messagebox.showinfo("Script path", f"Path is {base_path}.", parent=self.root)
-            # The script is expected in the '_internal' subdirectory of the bundle.
-            return os.path.join(base_path, "_internal", script_name)
         else:
             # We are running from a standard Python script (.py).
             # The script is located alongside the main application script.
             base_path = os.path.dirname(os.path.abspath(__file__))
-            return os.path.join(base_path, script_name)
+        return os.path.join(base_path, script_name)
 
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
