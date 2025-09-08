@@ -15578,7 +15578,7 @@ class TileEditorApp:
 
         script_path = self._get_script_path("msxtilemagic.py")
         if not os.path.exists(script_path):
-            messagebox.showerror("Script Error", f"Could not find 'msxtilemagic.py'.", parent=self.root)
+            messagebox.showerror("Script Error", f"Could not find 'msxtilemagic.py'/r/n Path: {script_path}.", parent=self.root)
             return
 
         output_dir = os.path.join(platformdirs.user_cache_dir(self.config_app_name, appauthor=False, ensure_exists=True), "tile_import_temp")
@@ -16457,7 +16457,7 @@ class TileEditorApp:
         
         script_path = self._get_script_path("msxtilemagic.py")
         if not os.path.exists(script_path):
-            messagebox.showerror("Script Error", f"Could not find the 'msxtilemagic.py' script.", parent=self.root)
+            messagebox.showerror("Script Error",  f"Could not find 'msxtilemagic.py'/r/n Path: {script_path}.", parent=self.root)
             return
 
         output_dir = os.path.join(platformdirs.user_cache_dir(self.config_app_name, appauthor=False, ensure_exists=True), "img_import_temp")
