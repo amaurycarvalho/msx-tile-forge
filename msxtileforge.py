@@ -11,6 +11,8 @@ SPLASH_IMAGE = r"iVBORw0KGgoAAAANSUhEUgAAAVQAAAGPCAIAAACMCb8OAAAAAXNSR0IArs4c6QA
 # ICON_IMAGE = r"iVBORw0"
 # SPLASH_IMAGE = r"iVBORw0"
 
+import argparse
+import multiprocessing
 import json
 import warnings
 import platformdirs
@@ -38,6 +40,8 @@ import threading
 import queue
 from scipy.optimize import linear_sum_assignment
 import shutil
+from contextlib import redirect_stdout
+import importlib
 
 # --- Constants ---
 TILE_WIDTH = 8
@@ -210,6 +214,136 @@ def _error(message):
 
 def _critical(message):
     logger.critical(f"{str(message)}")
+
+# --- Utility Classes ------------------------------------------------------------------------------------------
+
+class ScriptRunnerDialog(tk.Toplevel):
+    """
+    A modal dialog that runs an external script in a thread, streams its
+    output to a Text widget, and calls a callback function upon completion.
+    """
+    def __init__(self, parent, title, command_list, on_complete_callback):
+        super().__init__(parent)
+        self.transient(parent)
+        self.grab_set()
+        self.title(title)
+        self.resizable(False, False)
+
+        self.on_complete = on_complete_callback
+        self.command = command_list
+        
+        main_frame = ttk.Frame(self, padding="10")
+        main_frame.pack(expand=True, fill="both")
+
+        log_frame = ttk.LabelFrame(main_frame, text="Log")
+        log_frame.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+        
+        self.log_text = tk.Text(log_frame, height=20, width=90, wrap=tk.WORD, state=tk.DISABLED, bg="#1E1E1E", fg="#D4D4D4", font=("Consolas", 9))
+        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
+        self.log_text['yscrollcommand'] = scrollbar.set
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.close_button = ttk.Button(main_frame, text="Close", state=tk.DISABLED, command=self.destroy)
+        self.close_button.pack(pady=(10, 0))
+        
+        self.protocol("WM_DELETE_WINDOW", self._on_attempt_close)
+        
+        self.after(100, self._start_script)
+        self._center_on_parent()
+
+    def _update_text_widget(self, text):
+        # GUI-safe method to append text to the log widget.
+        if self.log_text.winfo_exists():
+            self.log_text.config(state=tk.NORMAL)
+            self.log_text.insert(tk.END, text)
+            self.log_text.see(tk.END)
+            self.log_text.config(state=tk.DISABLED)
+
+    def _run_script_in_thread(self):
+        # This is the target function for the thread.
+        saved_argv = sys.argv
+        sys.argv = self.command
+        module = None
+        
+        # A buffer that calls our GUI-safe update method for every print().
+        buffer = CallbackBuffer(callback=lambda text: self.after_idle(self._update_text_widget, text))
+
+        with redirect_stdout(buffer):
+            try:
+                path, module_name = os.path.split(self.command[0])
+                module_name = module_name.replace(".py", "")
+                
+                module = importlib.import_module(module_name, path)
+                module.main()
+                
+                # Schedule the final callback on the main GUI thread.
+                self.after_idle(self._on_script_finished, True)
+                
+            except Exception:
+                error_traceback = traceback.format_exc()
+                print(error_traceback) 
+                self.after_idle(self._on_script_finished, False)
+                
+        # Clean up by restoring sys.argv and unloading the module.
+        if module and module_name in sys.modules:
+            del sys.modules[module_name]
+        del module
+        sys.argv = saved_argv
+
+    def _start_script(self):
+        # Creates and starts the background thread.
+        thread = threading.Thread(target=self._run_script_in_thread)
+        thread.daemon = True
+        thread.start()
+
+    def _on_script_finished(self, success):
+        # Internal callback to handle script completion.
+        _debug(f"[ScriptRunnerDialog._on_script_finished] Called with success: {success}")
+
+        # Only modify widgets if the window still exists.
+        if self.winfo_exists():
+            self.close_button.config(state=tk.NORMAL)
+            _debug("[ScriptRunnerDialog._on_script_finished] Close button enabled.")
+        else:
+            _debug("[ScriptRunnerDialog._on_script_finished] Window no longer exists. Skipping button configuration.")
+
+        # Call the original on_complete callback that was passed in.
+        if self.on_complete:
+            _debug("[ScriptRunnerDialog._on_script_finished] Calling the final on_complete callback.")
+            self.on_complete(success)
+        _debug("[ScriptRunnerDialog._on_script_finished] Method has completed.")
+
+    def _on_attempt_close(self):
+        # Prevents closing the window while the script is running.
+        if self.close_button['state'] == tk.DISABLED:
+            messagebox.showwarning("Process Running", "Please wait for the script to complete.", parent=self)
+        else:
+            self.destroy()
+
+    def _center_on_parent(self):
+        # Centers the dialog over its parent window.
+        self.update_idletasks()
+        parent = self.master
+        parent_x, parent_y = parent.winfo_rootx(), parent.winfo_rooty()
+        parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+        win_w, win_h = self.winfo_reqwidth(), self.winfo_reqheight()
+        x = parent_x + (parent_w - win_w) // 2
+        y = parent_y + (parent_h - win_h) // 2
+        self.geometry(f"+{x}+{y}")
+
+# --- Utility Classes ------------------------------------------------------------------------------------------
+class CallbackBuffer:
+    """A buffer that calls a function every time data is received."""
+    def __init__(self, callback):
+        self.callback = callback
+
+    def write(self, data):
+        # Trigger the callback with the received data
+        self.callback(data)
+
+    def isatty(self):
+        return False
 
 # --- Undo/Redo Framework Classes ------------------------------------------------------------------------------
 class ICommand:
@@ -2432,6 +2566,7 @@ class SupertileUsageWindow(tk.Toplevel):
         if self.tree.cget("cursor") != new_cursor:
             self.tree.config(cursor=new_cursor)
 
+# --- Export Dialog Class -----------------------------------------------------------------------------------------------
 class ExportDialog(tk.Toplevel):
     def __init__(self, parent, app_instance, project_path):
         super().__init__(parent)
@@ -2476,25 +2611,18 @@ class ExportDialog(tk.Toplevel):
         asm_check.pack(anchor="w", padx=10, pady=2)
         c_check = ttk.Checkbutton(options_frame, text="C Header Files (.h)", variable=self.gen_c_header_var)
         c_check.pack(anchor="w", padx=10, pady=2)
-
-        # Log
-        log_frame = ttk.LabelFrame(main_frame, text="Export Log")
-        log_frame.pack(padx=5, pady=10, fill=tk.BOTH, expand=True)
-        self.log_text = tk.Text(log_frame, height=12, width=80, wrap=tk.WORD, state=tk.DISABLED, bg="#2E2E2E", fg="#D0D0D0", font=("Consolas", 9))
-        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        self.log_text['yscrollcommand'] = scrollbar.set
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(padx=5, pady=(5, 0))
+        button_frame.pack(padx=5, pady=(15, 0)) # Added more top padding
+        # The Export button now just starts the process. The ScriptRunnerDialog handles button states.
         self.export_button = ttk.Button(button_frame, text="Export", command=self.start_export)
-        self.close_button = ttk.Button(button_frame, text="Close", command=self.on_close)
+        # The Cancel button now simply destroys this dialog.
+        self.cancel_button = ttk.Button(button_frame, text="Cancel", command=self.destroy)
         self.export_button.pack(side=tk.LEFT, padx=5)
-        self.close_button.pack(side=tk.LEFT, padx=5)
+        self.cancel_button.pack(side=tk.LEFT, padx=5)
         
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.center_window()
 
     def center_window(self):
@@ -2510,32 +2638,23 @@ class ExportDialog(tk.Toplevel):
             self.output_dir_var.set(directory)
 
     def start_export(self):
-        self.export_button.config(state=tk.DISABLED)
-        self.close_button.config(state=tk.DISABLED)
-        self.log_text.config(state=tk.NORMAL)
-        self.log_text.delete('1.0', tk.END)
-        self.log_text.config(state=tk.DISABLED)
-
         output_dir = self.output_dir_var.get()
         basename = self.basename_var.get()
 
         if not output_dir or not basename:
             messagebox.showerror("Input Error", "Output directory and basename cannot be empty.", parent=self)
-            self.on_export_complete(success=False)
             return
 
-        script_base_path = os.path.dirname(sys.argv[0])
-        cli_script = os.path.join(script_base_path, "msxtileexport.py")
+        # Use the unified helper to get the script path, fixing the pathing bug.
+        cli_script = self.parent_app._get_script_path("msxtileexport.py")
         
         if not os.path.exists(cli_script):
-            messagebox.showerror("Script Error", f"Exporter script 'msxtileexport.py' not found in application directory:\n{script_base_path}", parent=self)
-            self.on_export_complete(success=False)
+            messagebox.showerror("Script Error", f"Exporter script 'msxtileexport.py' not found.", parent=self)
             return
 
         source_file = self.project_path + ".SC4Map"
 
         command = [
-            sys.executable,
             cli_script,
             source_file,
             "--output-dir", output_dir,
@@ -2546,23 +2665,22 @@ class ExportDialog(tk.Toplevel):
         if self.gen_c_header_var.get():
             command.append("--c-header")
         
-        self.parent_app._run_script_and_stream_output(
-            command, 
-            self.log_text, 
-            self.on_export_complete
+        # Instantiate and run the unified script runner dialog.
+        ScriptRunnerDialog(
+            parent=self.parent_app.root, # Make it modal to the main app window
+            title="Exporting Project...",
+            command_list=command,
+            on_complete_callback=self.on_export_complete
         )
 
+        # Now that the new dialog has been launched, this dialog's job is done.
+        self.destroy()
+
     def on_export_complete(self, success=True):
-        self.export_button.config(state=tk.NORMAL)
-        self.close_button.config(state=tk.NORMAL)
+        # This callback is called by the ScriptRunnerDialog when it closes.
+        # Its only job is to show the final status message.
         if success:
-            messagebox.showinfo("Export Complete", "Export process finished successfully.", parent=self)
-        
-    def on_close(self):
-        if self.export_button['state'] == tk.DISABLED:
-            messagebox.showwarning("Export in Progress", "Please wait for the process to complete.", parent=self)
-        else:
-            self.destroy()
+            messagebox.showinfo("Export Complete", "Export process finished successfully.", parent=self.parent_app.root)
 
 class ImageImportDialog(tk.Toplevel):
     def __init__(self, parent, app_instance, image_path):
@@ -15434,7 +15552,7 @@ class TileEditorApp:
 
     def import_tiles_from_image(self):
         """
-        NEW WORKFLOW: Runs msxtilemagic.py to pre-process an image, then presents
+        Runs msxtilemagic.py to pre-process an image, then presents
         the resulting tiles in a selection dialog for undoable, additive import.
         """
         image_filepath = filedialog.askopenfilename(
@@ -15458,25 +15576,23 @@ class TileEditorApp:
             _info("Image to Tile import cancelled by user at options dialog.")
             return
 
-        # --- Assemble and run the external script ---
-        script_path = os.path.join(os.path.dirname(sys.argv[0]), "msxtilemagic.py")
+        script_path = self._get_script_path("msxtilemagic.py")
         if not os.path.exists(script_path):
-            messagebox.showerror("Script Error", f"Could not find 'msxtilemagic.py'.", parent=self.root)
+            messagebox.showerror("Script Error", f"Could not find 'msxtilemagic.py'/r/n Path: {script_path}.", parent=self.root)
             return
 
-        # Define temporary output location
         output_dir = os.path.join(platformdirs.user_cache_dir(self.config_app_name, appauthor=False, ensure_exists=True), "tile_import_temp")
         os.makedirs(output_dir, exist_ok=True)
         basename = "temp_tile_import"
         
-        # Assemble the command with the new --no-maps flag
         command = [
-            sys.executable, script_path, image_filepath,
+            script_path, image_filepath,
             "--output-dir", output_dir, "--output-basename", basename,
-            "--no-maps", # NEW: Prevent supertile/map generation
+            "--no-maps",
+            "--term-columns", "80",
             "--max-tiles", str(options["max_tiles"]),
             "--optimization-mode", options["opt_mode"],
-            "--supertile-width", str(options["st_width"]), # Still needed for tile ripping logic
+            "--supertile-width", str(options["st_width"]),
             "--supertile-height", str(options["st_height"]),
             "--color-metric", options["metric"],
             "--sort-tileset", options["sort_tiles"]
@@ -15492,33 +15608,32 @@ class TileEditorApp:
             
         _info(f"Executing tile generation script: {' '.join(command)}")
 
-        # --- Run the script with progress dialog ---
-        runner_dialog = tk.Toplevel(self.root)
-        runner_dialog.title("Generating Tiles from Image...")
-        runner_dialog.transient(self.root)
-        runner_dialog.grab_set()
-        runner_dialog.resizable(False, False)
-
-        log_text = tk.Text(runner_dialog, height=20, width=90, wrap=tk.WORD, state=tk.DISABLED, bg="#1E1E1E", fg="#D4D4D4", font=("Consolas", 9))
-        log_text.pack(padx=10, pady=10, expand=True, fill="both")
-        
         def on_script_complete(success):
-            runner_dialog.destroy() # Close the log window
-            if success:
-                temp_pal_path = os.path.join(output_dir, f"{basename}.SC4Pal")
-                temp_tiles_path = os.path.join(output_dir, f"{basename}.SC4Tiles")
-                
-                # After success, proceed to the selection dialog (Phase 3)
-                self._show_image_tile_selection_dialog(temp_pal_path, temp_tiles_path, output_dir)
-            else:
-                messagebox.showerror("Generation Failed", "The tile generation script failed. See console for details.", parent=self.root)
-                # Cleanup failed run
-                try:
-                    if os.path.exists(output_dir): shutil.rmtree(output_dir)
-                except Exception as e:
-                    _error(f"Failed to clean up temp dir after failed run: {e}")
+            # This function is called by the ScriptRunnerDialog when the script finishes.
+            try:
+                if success:
+                    temp_pal_path = os.path.join(output_dir, f"{basename}.SC4Pal")
+                    temp_tiles_path = os.path.join(output_dir, f"{basename}.SC4Tiles")
+                    
+                    self._show_image_tile_selection_dialog(temp_pal_path, temp_tiles_path, output_dir)
+                else:
+                    messagebox.showerror("Generation Failed", "The tile generation script failed. See console for details.", parent=self.root)
+            finally:
+                 # Always try to clean up if the script failed. 
+                 # If successful, the selection dialog becomes responsible for cleanup.
+                if not success:
+                    try:
+                        if os.path.exists(output_dir): shutil.rmtree(output_dir)
+                    except Exception as e:
+                        _error(f"Failed to clean up temp dir after failed run: {e}")
 
-        self._run_script_and_stream_output(command, log_text, on_script_complete)
+        # Instantiate and run the unified script runner dialog.
+        ScriptRunnerDialog(
+            parent=self.root,
+            title="Generating Tiles from Image...",
+            command_list=command,
+            on_complete_callback=on_script_complete
+        )
 
     def clear_all_supertiles_non_interactive(self):
         """
@@ -16076,73 +16191,12 @@ class TileEditorApp:
             # This state is for handling drags, so it's fine to set it here.
             self.last_placed_supertile_cell = (r, c)
 
-    def _run_script_and_stream_output(self, command, text_widget, on_complete_callback):
-        """
-        Runs an external script in a separate thread and streams its output
-        to a tkinter Text widget in a GUI-safe way.
-        """
-        output_queue = queue.Queue()
-
-        def thread_target(cmd, q):
-            """This function runs in a background thread."""
-            try:
-                # Create a copy of the current environment and force UTF-8 encoding
-                env = os.environ.copy()
-                env['PYTHONIOENCODING'] = 'utf-8'
-
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    encoding='utf-8',
-                    errors='replace',
-                    bufsize=1,
-                    universal_newlines=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-                    env=env # Pass the modified environment to the subprocess
-                )
-
-                for line in iter(process.stdout.readline, ''):
-                    q.put(line)
-
-                process.stdout.close()
-                return_code = process.wait()
-                q.put(f"\n--- Process finished with exit code {return_code} ---")
-                # Put the success status (True/False) on the queue as the final item
-                q.put(return_code == 0)
-                
-            except Exception as e:
-                q.put(f"\n--- THREAD ERROR: {e} ---")
-            finally:
-                # Put failure status on the queue if an exception occurred
-                q.put(False)
-
-        thread = threading.Thread(target=thread_target, args=(command, output_queue))
-        thread.daemon = True
-        thread.start()
-        self._check_output_queue(text_widget, output_queue, on_complete_callback)
-
-    def _check_output_queue(self, text_widget, q, on_complete_callback):
-        """Periodically checks the queue for new output and updates the Text widget."""
-        try:
-            while True:
-                line = q.get_nowait()
-
-                if isinstance(line, bool):
-                    if on_complete_callback:
-                        on_complete_callback(line) # Pass success status to callback
-                    return
-
-                if text_widget.winfo_exists():
-                    text_widget.config(state=tk.NORMAL)
-                    text_widget.insert(tk.END, line)
-                    text_widget.see(tk.END)
-                    text_widget.config(state=tk.DISABLED)
-
-        except queue.Empty:
-            if self.root.winfo_exists():
-                self.root.after(100, self._check_output_queue, text_widget, q, on_complete_callback)
+    def _update_text_widget(self, text, text_widget, done=False):
+        if text_widget.winfo_exists():
+            text_widget.config(state=tk.NORMAL)
+            text_widget.insert(tk.END, text)
+            text_widget.see(tk.END)
+            text_widget.config(state=tk.DISABLED)
 
     def handle_export_raw(self):
         if self.current_project_base_path is None:
@@ -16399,27 +16453,22 @@ class TileEditorApp:
             _info("Image import cancelled by user.")
             return
 
-        # --- Save a copy of the current palette before loading the new one ---
         palette_before_load = list(self.active_msx_palette)
-        _debug(f"Saved pre-import palette state: {palette_before_load}")
-
-        # --- Assemble the command ---
-        script_path = os.path.join(os.path.dirname(sys.argv[0]), "msxtilemagic.py")
+        
+        script_path = self._get_script_path("msxtilemagic.py")
         if not os.path.exists(script_path):
-            messagebox.showerror("Script Error", f"Could not find the 'msxtilemagic.py' script.\nExpected location: {script_path}", parent=self.root)
+            messagebox.showerror("Script Error",  f"Could not find 'msxtilemagic.py'/r/n Path: {script_path}.", parent=self.root)
             return
 
         output_dir = os.path.join(platformdirs.user_cache_dir(self.config_app_name, appauthor=False, ensure_exists=True), "img_import_temp")
         os.makedirs(output_dir, exist_ok=True)
         basename = os.path.splitext(os.path.basename(image_filepath))[0] + "_imp"
-        
+
         command = [
-            sys.executable,
-            script_path,
-            image_filepath,
-            "--output-dir", output_dir,
-            "--output-basename", basename,
+            script_path, image_filepath,
+            "--output-dir", output_dir, "--output-basename", basename,
             "--max-tiles", str(options["max_tiles"]),
+            "--term-columns", "80",
             "--optimization-mode", options["opt_mode"],
             "--supertile-width", str(options["st_width"]),
             "--supertile-height", str(options["st_height"]),
@@ -16427,71 +16476,43 @@ class TileEditorApp:
             "--sort-tileset", options["sort_tiles"]
         ]
         
-        palette_rules = options["palette_rules"]
-        for i, rule in enumerate(palette_rules):
-            command.append("--palette-slot")
-            command.append(str(i))
-            command.append(rule)
+        for i, rule in enumerate(options["palette_rules"]):
+            command.append(f"--palette-slot"); command.append(str(i)); command.append(rule)
 
-        if not options["dithering"]:
-            command.append("--no-dithering")
-        if options["find_offset"]:
-            command.append("--find-best-offset")
-        if options["synthesize"]:
-            command.append("--synthesize-tiles")
-        if options["limit_cores"]:
-            command.append("--cores")
-            command.append(str(options["cores"]))
+        if not options["dithering"]: command.append("--no-dithering")
+        if options["find_offset"]: command.append("--find-best-offset")
+        if options["synthesize"]: command.append("--synthesize-tiles")
+        if options["limit_cores"]: command.append("--cores"); command.append(str(options["cores"]))
             
         _info(f"Executing external command: {' '.join(command)}")
 
-        # --- Run the script ---
-        runner_dialog = tk.Toplevel(self.root)
-        runner_dialog.title("Importing Project...")
-        runner_dialog.transient(self.root)
-        runner_dialog.grab_set()
-        runner_dialog.resizable(False, False)
-
-        log_text = tk.Text(runner_dialog, height=20, width=90, wrap=tk.WORD, state=tk.DISABLED, bg="#1E1E1E", fg="#D4D4D4", font=("Consolas", 9))
-        scrollbar = ttk.Scrollbar(runner_dialog, command=log_text.yview)
-        log_text['yscrollcommand'] = scrollbar.set
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        def cleanup_and_close():
-            try:
-                if os.path.exists(output_dir):
-                    shutil.rmtree(output_dir)
-                    _debug(f"Cleaned up temporary import directory: {output_dir}")
-            except Exception as e:
-                _error(f"Failed to clean up temporary directory {output_dir}: {e}")
-            runner_dialog.destroy()
-
-        close_button = ttk.Button(runner_dialog, text="Close", state=tk.DISABLED, command=cleanup_and_close)
-        close_button.pack(pady=5)
-        
         def on_script_complete(success):
-            if success:
-                runner_dialog.destroy()
-                project_base_path = os.path.join(output_dir, basename)
-                self._execute_project_open(project_base_path, OPEN_MODE_STARTUP, preserved_palette=palette_before_load)
-                
-                self.current_project_base_path = None
-                self._mark_project_modified()
-                messagebox.showinfo("Import Successful", "Project successfully created from image.\nUse 'Save Project As...' to save it.", parent=self.root)
-
+            # This function is called by the ScriptRunnerDialog when the script finishes.
+            try:
+                if success:
+                    project_base_path = os.path.join(output_dir, basename)
+                    self._execute_project_open(project_base_path, OPEN_MODE_STARTUP, preserved_palette=palette_before_load)
+                    
+                    self.current_project_base_path = None
+                    self._mark_project_modified()
+                    messagebox.showinfo("Import Successful", "Project successfully created from image.\nUse 'Save Project As...' to save it.", parent=self.root)
+                else:
+                    messagebox.showerror("Import Failed", "The import script failed to complete. See log for details.", parent=self.root)
+            finally:
+                # Always clean up the temporary directory.
                 try:
                     if os.path.exists(output_dir):
                         shutil.rmtree(output_dir)
-                        _debug(f"Cleaned up temporary import directory: {output_dir}")
                 except Exception as e:
-                    _error(f"Failed to clean up temporary directory after successful import: {e}")
-            else:
-                messagebox.showerror("Import Failed", "The import script failed to complete. See log for details.", parent=self.root)
-                close_button.config(state=tk.NORMAL)
-                runner_dialog.grab_release()
+                    _error(f"Failed to clean up temporary directory: {e}")
 
-        self._run_script_and_stream_output(command, log_text, on_script_complete)
+        # Instantiate and run the unified script runner dialog.
+        ScriptRunnerDialog(
+            parent=self.root,
+            title="Importing Project from Image...",
+            command_list=command,
+            on_complete_callback=on_script_complete
+        )
 
     def _cleanup_temp_dirs(self):
         """Deletes temporary directories used by the application on startup."""
@@ -17211,12 +17232,33 @@ class TileEditorApp:
         
         messagebox.showinfo("Import Successful", f"Successfully imported {num_actually_imported} tile(s).", parent=self.root)
 
+    def _get_script_path(self, script_name):
+        """
+        Gets the absolute path to a bundled script, handling source,
+        one-folder, and one-file PyInstaller environments.
+        """
+        # Check if the application is running in a bundled (frozen) state.
+        if getattr(sys, 'frozen', False):
+            # We are in a packaged environment (e.g., PyInstaller).
+            if hasattr(sys, '_MEIPASS'):
+                # This is a ONE-FILE bundle. The base path is the temporary folder.
+                base_path = sys._MEIPASS
+            else:
+                # This is a ONE-FOLDER bundle. The base path is the directory
+                # of the executable itself.
+                base_path = os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            # We are running from a standard Python script (.py).
+            # The script is located alongside the main application script.
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_path, script_name)
+
 # print(dir(TileEditorApp))
 # exit() # Stop before GUI starts for this test
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    import argparse
+    multiprocessing.freeze_support()
     import webbrowser # Import for the splash screen link
     import tkinter.font as font # Import for the splash screen link font
 
