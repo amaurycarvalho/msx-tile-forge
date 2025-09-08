@@ -17234,16 +17234,25 @@ class TileEditorApp:
 
     def _get_script_path(self, script_name):
         """
-        Gets the absolute path to a bundled script, handling both packaged
-        (PyInstaller) and source code environments.
+        Gets the absolute path to a bundled script, handling source,
+        one-folder, and one-file PyInstaller environments.
         """
-        if hasattr(sys, '_MEIPASS'):
-            # Path when running from a PyInstaller bundle.
-            base_path = sys._MEIPASS
-            # In our PyInstaller spec, we place scripts in an "_internal" folder.
+        # Check if the application is running in a bundled (frozen) state.
+        if getattr(sys, 'frozen', False):
+            # We are in a packaged environment (e.g., PyInstaller).
+            if hasattr(sys, '_MEIPASS'):
+                # This is a ONE-FILE bundle. The base path is the temporary folder.
+                base_path = sys._MEIPASS
+            else:
+                # This is a ONE-FOLDER bundle. The base path is the directory
+                # of the executable itself.
+                base_path = os.path.dirname(os.path.abspath(sys.executable))
+            
+            # The script is expected in the '_internal' subdirectory of the bundle.
             return os.path.join(base_path, "_internal", script_name)
         else:
-            # Path when running from source. Scripts are alongside the main application.
+            # We are running from a standard Python script (.py).
+            # The script is located alongside the main application script.
             base_path = os.path.dirname(os.path.abspath(__file__))
             return os.path.join(base_path, script_name)
 
