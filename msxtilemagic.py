@@ -19,6 +19,9 @@ from itertools import combinations
 import heapq
 import warnings
 
+# --- Fixed tqdm configurations ---
+tqdm_kwargs = {'file': sys.stdout or sys.__stdout__, 'mininterval': 0.1}
+    
 # --- Global Warning Filter ---
 warnings.filterwarnings("ignore", message='.*"Matplotlib" related API features are not available.*')
 
@@ -320,7 +323,8 @@ def find_best_tiling_offset(quantized_image, num_cores):
     results = []
     init_args = (img_data,)
     with multiprocessing.Pool(processes=num_cores, initializer=_offset_worker_initializer, initargs=init_args) as pool:
-        for result in tqdm(pool.imap_unordered(_calculate_offset_score_worker, tasks), total=len(tasks), desc="   Finding best offset", leave=False, unit="offset", file=sys.stdout or sys.__stdout__):
+        print ("tqdm1 below...")
+        for result in tqdm(pool.imap_unordered(_calculate_offset_score_worker, tasks), total=len(tasks), desc="   Finding best offset", unit=" offsets", **tqdm_kwargs):
             results.append(result)
             
     if not results:
@@ -477,22 +481,19 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         print(f"   Initializing worker pool and transferring data to {num_cores} cores.\r\n      -> This may take some seconds, please wait..")
         chunksize = max(1, len(all_pairs) // (num_cores * 16))
         init_args = (active_tiles, palette_255, color_metric)
-        print(f"   Hello 0")
         with multiprocessing.Pool(processes=num_cores, initializer=_init_worker, initargs=init_args) as pool:
-            print(f"   Hello 0.1")
-            for result in tqdm(pool.imap_unordered(_calculate_initial_costs_worker, all_pairs, chunksize=chunksize), total=len(all_pairs), desc="   Pre-calculating costs", mininterval=10.0, file=sys.stdout or sys.__stdout__):
+            print ("tqdm2 below...")
+            tqdm_kwargs_for_costs = tqdm_kwargs.copy()
+            tqdm_kwargs_for_costs['mininterval']=10.0
+            for result in tqdm(pool.imap_unordered(_calculate_initial_costs_worker, all_pairs, chunksize=chunksize), total=len(all_pairs), desc="   Pre-calculating costs", unit=" tile pairs", **tqdm_kwargs):
                 if result:
                     cost, idx1, idx2 = result
                     heapq.heappush(merge_heap, result)
                     similarity_map[idx1].append((cost, idx2))
                     similarity_map[idx2].append((cost, idx1))
 
-        print(f"   Hello 1")
-
     for idx in similarity_map:
         similarity_map[idx].sort()
-
-        print(f"   Hello 2")
 
     # --- Step 2: Merge tiles if necessary ---
     if initial_unique_count > max_tiles:
@@ -500,7 +501,8 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
         print(f"   Performing {num_merges_to_perform} merges to reach target of {max_tiles} tiles...")
         is_active = {idx: True for idx in active_tiles.keys()}
         
-        with tqdm(total=num_merges_to_perform, desc="   Merging tiles", file=sys.stdout or sys.__stdout__) as pbar:
+        print ("tqdm3 below...")
+        with tqdm(total=num_merges_to_perform, desc="   Merging tiles", unit=" merges", **tqdm_kwargs) as pbar:
             merges_done = 0
             while merges_done < num_merges_to_perform and merge_heap:
                 cost, idx1, idx2 = heapq.heappop(merge_heap)
@@ -528,7 +530,8 @@ def optimize_by_precomputation_and_heap(all_source_tiles_sc4, all_source_tiles_q
     if synthesize and initial_unique_count > max_tiles:
         print("   Synthesizing ideal tiles for merged groups...")
         color_dist_func = get_color_distance_function(color_metric)
-        for tile_info in tqdm(active_tiles.values(), desc="   Synthesizing", file=sys.stdout or sys.__stdout__):
+        print ("tqdm4 below...")
+        for tile_info in tqdm(active_tiles.values(), desc="   Synthesizing", unit=" tiles", **tqdm_kwargs):
             if len(tile_info["original_indices"]) > 1:
                 group_locations = []
                 for original_unique_idx in tile_info["original_indices"]:
@@ -631,7 +634,7 @@ def reconstruct_sc4_tile_pil(pattern_data, color_data, pil_palette_flat):
 def discover_supertiles(tile_map, super_w, super_h):
     map_h, map_w = tile_map.shape
     if map_w % super_w != 0 or map_h % super_h != 0:
-        print(f"Warning: Image dimensions ({map_w*8}x{map_h*8}) are not perfectly divisible by supertile dimensions ({super_w*8}x{super_h*8}).")
+        print(f"Warning: Image dimensions ({map_w*8}px x {map_h*8}px) are not perfectly divisible by supertile dimensions ({super_w*8}px x {super_h*8}px).")
     
     super_map_w = map_w // super_w
     super_map_h = map_h // super_h
@@ -877,30 +880,31 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("input_image", help="Input image file path")
-    parser.add_argument("--max-tiles", type=int, default=256, help="Target maximum number of unique tiles")
+    parser.add_argument("--term-columns", type=int, default=None, help="Force progress bars to comply to a fixed line width.")
     parser.add_argument("--output-dir", default=".", help="Directory for output files (defaults to current directory).")
     parser.add_argument("--output-basename", help="Basename for output files (defaults to the input file's name).")
-    parser.add_argument("--no-dithering", action="store_true", help="Disable dithering during color quantization.")
     parser.add_argument("--cores", type=int, default=os.cpu_count(), help="Number of CPU cores to use. Defaults to all.")
+    parser.add_argument("--no-maps", action="store_true", help="Generate only the palette and tileset, skipping supertile and map generation.")
+    parser.add_argument("--find-best-offset", action="store_true", help="[EXPERIMENTAL] Test all 64 tile offsets in parallel and pick the one which reduces color clash.")
+    parser.add_argument("--no-dithering", action="store_true", help="Disable dithering during color quantization.")
     parser.add_argument("--color-metric", choices=['rgb', 'weighted-rgb', 'cie76', 'ciede2000'], default='weighted-rgb',
                         help="Algorithm for color difference calculation. 'weighted-rgb' is default. CIE modes require 'pip install colormath'.")
-    parser.add_argument("--supertile-width", type=int, default=4, help="Width of supertiles in tiles. Default: 4")
-    parser.add_argument("--supertile-height", type=int, default=4, help="Height of supertiles in tiles. Default: 4")
-    parser.add_argument("--find-best-offset", action="store_true", help="[EXPERIMENTAL] Test all 64 tile offsets in parallel and pick the one which reduces color clash.")
-    parser.add_argument("--synthesize-tiles", action="store_true", help="[EXPERIMENTAL] Generate new 'ideal' tiles for merged groups instead of picking an existing one.")
-    parser.add_argument("--no-maps", action="store_true", help="Generate only the palette and tileset, skipping supertile and map generation.")
     parser.add_argument("--optimization-mode", type=str, choices=['neutral', 'sharp', 'balanced', 'soft'], default='neutral', 
                         help="Palette strategy for optimization.\n"
                              "  neutral (default): Faithful, neutral color selection.\n"
                              "  sharp: High contrast palette for render and metrics.\n"
                              "  balanced: High contrast palette or rendering,low contrast palette for metrics (better tile reduction).\n"
                              "  soft: Low contrast for render and metrics (better tile reduction, 'washed' final image).")
-
+    parser.add_argument("--max-tiles", type=int, default=256, help="Target maximum number of unique tiles")
+    parser.add_argument("--synthesize-tiles", action="store_true", help="[EXPERIMENTAL] Generate new 'ideal' tiles for merged groups instead of picking an existing one.")
     parser.add_argument("--sort-tileset", type=str, choices=['none', 'greedy', 'cluster'], default='cluster',
                     help="Method to sort the final tileset for visual coherence.\n"
                             "  cluster (default): Groups tiles into visually similar clusters.\n"
                             "  greedy: Creates a continuous chain of most-similar tiles.\n"
                             "  none: Disables sorting, uses arbitrary order.")
+    parser.add_argument("--supertile-width", type=int, default=4, help="Width of supertiles in tiles. Default: 4")
+    parser.add_argument("--supertile-height", type=int, default=4, help="Height of supertiles in tiles. Default: 4")
+
 
     palette_group = parser.add_argument_group('Palette Constraints', 
         'Rules for controlling palette slots. Later rules override earlier ones.\n'
@@ -912,6 +916,8 @@ def main():
     palette_group.add_argument("--palette-slot", nargs=2, action='append', metavar=('<INDEX>', '<RULE>'), help="Set a rule for a specific slot. Can be used multiple times.")
 
     args = parser.parse_args()
+    if args.term_columns:
+        tqdm_kwargs['ncols'] = args.term_columns
 
     if (args.color_metric in ['cie76', 'ciede2000']) and not COLOUR_SCIENCE_AVAILABLE:
         print("\n--- ERROR ---")
@@ -992,12 +998,13 @@ def main():
     else:
         metric_working_palette_0_7 = render_working_palette_0_7
 
-    # --- 3. Remap image and process tiles ---
-    print(f"   [INFO] Remapping image to {len(render_working_palette_0_7)}-color render palette...")
+    # --- 3. Remap image colors ---
+    print("3. Remapping image colors...")
+    print(f"   [INFO] Using {len(render_working_palette_0_7)}-color render palette...")
     quantized_pil_image = remap_image_to_palette(original_pil_image, render_working_palette_0_7, not args.no_dithering)
 
     if args.find_best_offset:
-        print(f"3b. Evaluating 64 possible offsets on {args.cores} cores...")
+        print(f"3a. Evaluating 64 possible offsets on {args.cores} cores...")
         best_offset = find_best_tiling_offset(quantized_pil_image, args.cores)
         dx, dy = best_offset
         print(f"   [INFO] Optimal offset found at ({dx}, {dy}). Cropping image.")
@@ -1008,6 +1015,7 @@ def main():
     img_width, img_height = quantized_pil_image.size
     tile_map_width, tile_map_height = img_width // 8, img_height // 8
 
+    # --- 4. Extracting tiles ---
     print("4. Extracting and processing source tiles...")
     all_source_tiles_sc4_render = []
     all_source_tiles_sc4_metric = []
@@ -1017,7 +1025,8 @@ def main():
     metric_palette_255 = [(r*255//7, g*255//7, b*255//7) for r,g,b in metric_working_palette_0_7]
 
     quantized_np_indices = np.array(quantized_pil_image.getdata(), dtype=np.uint8).reshape((img_height, img_width))
-    for ty in tqdm(range(tile_map_height), desc="   Processing Tiles", file=sys.stdout or sys.__stdout__):
+    print ("tqdm5 below...")
+    for ty in tqdm(range(tile_map_height), desc="   Processing Tiles", unit=" map rows", **tqdm_kwargs):
         for tx in range(tile_map_width):
             tile_block = quantized_np_indices[ty*8:(ty+1)*8, tx*8:(tx+1)*8]
             all_source_tiles_quantized.append(tile_block)
@@ -1114,7 +1123,8 @@ def main():
             chunksize = max(1, len(st_pairs) // (args.cores * 16))
 
             with multiprocessing.Pool(processes=args.cores, initializer=_init_supertile_worker, initargs=init_args) as pool:
-                for dist, idx1, idx2 in tqdm(pool.imap_unordered(_calculate_supertile_cost_worker, st_pairs, chunksize=chunksize), total=len(st_pairs), desc="   Clustering supertiles", leave=False, file=sys.stdout or sys.__stdout__):
+                print ("tqdm6 below...")
+                for dist, idx1, idx2 in tqdm(pool.imap_unordered(_calculate_supertile_cost_worker, st_pairs, chunksize=chunksize), total=len(st_pairs), desc="   Clustering supertiles", unit=" supertile pairs", **tqdm_kwargs):
                     st_similarity_map[idx1].append((dist, idx2))
                     st_similarity_map[idx2].append((dist, idx1))
 
