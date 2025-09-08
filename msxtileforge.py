@@ -17248,6 +17248,7 @@ class TileEditorApp:
                 # of the executable itself.
                 base_path = os.path.dirname(os.path.abspath(sys.executable))
             
+            messagebox.showinfo("Script path", f"Path is {base_path}.", parent=self.root)
             # The script is expected in the '_internal' subdirectory of the bundle.
             return os.path.join(base_path, "_internal", script_name)
         else:
