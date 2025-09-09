@@ -35,6 +35,7 @@ common:
 		--add-data "msxtilemagic.py:." \
 		--add-data "tilerandomizer.py:." \
 		--add-data "supertilerandomizer.py:." \
+		--hidden-import='PIL._tkinter_finder' \
 		--noconfirm $(MAIN_SCRIPT)
 	cp README.md LICENSE $(TARGET_DIR)
 
