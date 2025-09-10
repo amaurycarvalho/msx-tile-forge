@@ -135,6 +135,9 @@ jobs:
     needs: [generate-version, build-linux, build-windows, build-macos, build-source]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download all final build artifacts
         uses: actions/download-artifact@v4
         with:
