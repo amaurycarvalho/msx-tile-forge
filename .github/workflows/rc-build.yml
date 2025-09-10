@@ -63,6 +63,7 @@ jobs:
           echo "WIN_FILENAME=${BASE_NAME}_win.zip" >> $GITHUB_OUTPUT
           echo "LIN_FILENAME=${BASE_NAME}_lin.tar.gz" >> $GITHUB_OUTPUT
           echo "DEB_FILENAME=${BASE_NAME}_deb.deb" >> $GITHUB_OUTPUT
+          echo "MAC_FILENAME=${BASE_NAME}_mac.zip" >> $GITHUB_OUTPUT
           echo "SRC_FILENAME=${BASE_NAME}_src.zip" >> $GITHUB_OUTPUT
 
   #########################################
