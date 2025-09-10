@@ -159,7 +159,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ needs.generate-version.outputs.version_string }}" ./final-artifacts/*/* \
+          gh release create "v${{ needs.generate-version.outputs.version_string }}" ./final-artifacts/**/*.{zip,deb,tar.gz} \
             --title "Release Candidate v${{ needs.generate-version.outputs.version_string }}" \
             --notes "This is a pre-release version for testing. All packages are attached below." \
             --prerelease
