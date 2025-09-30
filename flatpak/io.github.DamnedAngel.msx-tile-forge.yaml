@@ -5,10 +5,6 @@ sdk: org.freedesktop.Sdk
 
 command: msxtileforge
 
-build-options:
-  env:
-    APP_VERSION: 01.00.00_rc20_5 # NOTE: app version
-
 finish-args:
   - --share=ipc # needed for X11
   - --socket=fallback-x11
@@ -19,7 +15,55 @@ finish-args:
   - --filesystem=xdg-documents
 
 modules:
-  #- "python-tk.yaml"
+  - name: tcl
+    sources:
+      - type: archive
+        url: https://downloads.sourceforge.net/tcl/tcl8.6.13-src.tar.gz
+        sha256: 43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066
+    buildsystem: autotools
+    build-options:
+      no-debuginfo: true
+      strip: false
+    cleanup:
+      - /share/man
+
+  - name: tk
+    sources:
+      - type: archive
+        url: https://downloads.sourceforge.net/tcl/tk8.6.13-src.tar.gz
+        sha256: 2e65fa069a23365440a3c56c556b8673b5e32a283800d8d9b257e3f584ce0675
+    buildsystem: autotools
+    build-options:
+      no-debuginfo: true
+      strip: false
+    cleanup:
+      - /share/man
+
+  - name: python-deps
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --find-links="file://${PWD}/wheels" --prefix=${FLATPAK_DEST} Pillow numpy scipy platformdirs tqdm
+    sources:
+      # Pillow
+      - type: file
+        url: https://files.pythonhosted.org/packages/3e/2a/xxx/Pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl
+        sha256: <sha256sum-for-pillow>
+      # numpy
+      - type: file
+        url: https://files.pythonhosted.org/packages/41/9a/xxx/numpy-1.26.4-cp311-cp311-manylinux_2_28_x86_64.whl
+        sha256: <sha256sum-for-numpy>
+      # scipy
+      - type: file
+        url: https://files.pythonhosted.org/packages/97/5b/xxx/scipy-1.14.1-cp311-cp311-manylinux_2_28_x86_64.whl
+        sha256: <sha256sum-for-scipy>
+      # platformdirs
+      - type: file
+        url: https://files.pythonhosted.org/packages/1a/f9/xxx/platformdirs-4.3.6-py3-none-any.whl
+        sha256: <sha256sum-for-platformdirs>
+      # tqdm
+      - type: file
+        url: https://files.pythonhosted.org/packages/25/ce/xxx/tqdm-4.66.5-py3-none-any.whl
+        sha256: <sha256sum-for-tqdm>
 
   - name: msx-tile-forge
     buildsystem: simple
@@ -37,11 +81,8 @@ modules:
       - type: file
         path: wrapper.sh
     build-commands:
-      # Fix version string
-      - find . -type f -name "*.py" -exec sed -i "s/<unreleased>/${APP_VERSION}/g" {} +
-      # Install Python dependencies
-      #- pip3 install --prefix=/app platformdirs
-      - pip3 install -r requirements.txt
+      # NOTE: fix version string
+      - find . -type f -name "*.py" -exec sed -i "s/<unreleased>/01.00.00_rc20_5/g" {} +
       # Install Python sources
       - install -Dm644 msxtileforge.py /app/bin/msxtileforge.py
       - install -Dm644 msxtileexport.py /app/bin/msxtileexport.py
