@@ -26,7 +26,7 @@ modules:
         branch: feature/flatpak
         commit: 4a42b7c91c58ffa26988084cbfbd960b76070d4f
     build-commands:
-      # Install Python dependencies
+      # Install Python dependencies (tkinter, numpy, scipy, Pillow, platformdirs, tqdm)
       - mkdir -p /app/bin/_internal
       - cp -r _internal/* /app/bin/_internal
       # Install application
