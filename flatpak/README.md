@@ -54,7 +54,7 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
 
 3. Commit the change to the [upstream project repo](https://github.com/DamnedAngel/msx-tile-forge);
 
-4. Open `flatpak/io.github.DamnedAngel.msx-tile-forge.yaml` and change `url`, `sha256`, `branch` and `commit`;  
+4. Open `flatpak/io.github.DamnedAngel.msx-tile-forge.yaml` and change `url`, `sha256`, `tag` and `commit`;  
    ```
    - name: msx-tile-forge
      buildsystem: simple
@@ -64,8 +64,8 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
          sha256: <new_release_lin.tag.gz_sha256>
        - type: git
          url: <upstream_project.git_url>
-         branch: <branch_name>
-         commit: <branch_commit_id>
+         tag: <tag_name>
+         commit: <tag_commit_id>
    ```
 
 5. Do a smoke test on the [upstream project repo](https://github.com/DamnedAngel/msx-tile-forge):  
