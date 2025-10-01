@@ -24,9 +24,8 @@
       <image>https://raw.githubusercontent.com/DamnedAngel/msx-tile-forge/refs/tags/v01.00.00_rc20_5/Resources/splash4_1.png</image>
     </screenshot>
   </screenshots> 
-  <developer id="io.github.DamnedAngel.msx-tile-forge">
+  <developer id="io.github.DamnedAngel">
     <name>DamnedAngel</name>
-    <contact>danilo@angelo.eng.br</contact>
   </developer>
   <content_rating type="oars-1.1"/>
   <recommends>

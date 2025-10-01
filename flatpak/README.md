@@ -53,10 +53,12 @@ If you're new about flathub, it's a good idea to read [submission](https://docs.
 
 2. Open `io.github.DamnedAngel.msx-tile-forge.yaml` and change `APP_VERSION`, `tag` and `commit`;
 
-3. Do a full test (with linting):
+3. Do a smoke test:
 
    ```
-   ./linting.sh
+   ./install.sh
+   ./test.sh
+   ./uninstall.sh
    ```
 
    Note: this flatpak requires Python3+TK+TCL, so the building process can spend a little more time than usual.
