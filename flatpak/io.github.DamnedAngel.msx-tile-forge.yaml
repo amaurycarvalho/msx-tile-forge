@@ -110,7 +110,7 @@ modules:
     config-opts:
       - -DBUILD_TESTING:BOOL=OFF
       - -DDYNAMIC_ARCH:BOOL=ON
-      # required to generate lib/libopenblas.so
+      # required to generate a new lib/libopenblas.so
       - -DBUILD_SHARED_LIBS:BOOL=ON 
       - -DCMAKE_INSTALL_LIBDIR=lib
       - -DCMAKE_BUILD_TYPE=Release
@@ -119,7 +119,7 @@ modules:
         url: https://github.com/xianyi/OpenBLAS/archive/v0.3.29.tar.gz
         sha256: 38240eee1b29e2bde47ebb5d61160207dc68668a54cac62c076bb5032013b1eb
     post-install:
-      # lib/libopenblas.so is required to scipy linking process finish correctly
+      # new lib/libopenblas.so is required to scipy bind correctly
       - |
         if [ -f ${FLATPAK_DEST}/lib/libopenblas.so.0 ]; then
           ln -sf libopenblas.so.0 ${FLATPAK_DEST}/lib/libopenblas.so
@@ -196,12 +196,7 @@ modules:
         url: https://github.com/DamnedAngel/msx-tile-forge.git
         tag: v01.00.00_rc20_5
         commit: 9d5ee12897f7cff657c396c8afe05dec1465beaf
-      - type: archive
-        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v1.tar.gz
-        sha256: fe17c28ad6204874f7f6cb762a0c27d8bb827a454d2ea9f234e28324dc1ce8d6
-        dest: temp
     build-commands:
-      - mv temp/flatpak .
       - cd flatpak
       - make all APP_VERSION=${APP_VERSION} FLATPAK_ID=${FLATPAK_ID}
 

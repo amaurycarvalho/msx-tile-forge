@@ -1,3 +1,5 @@
+# Flatpak Makefile
+
 PREFIX ?= /app
 APP_VERSION ?= <unreleased>
 FLATPAK_ID ?= io.github.DamnedAngel.msx-tile-forge
