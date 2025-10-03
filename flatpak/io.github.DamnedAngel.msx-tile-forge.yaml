@@ -196,7 +196,17 @@ modules:
         url: https://github.com/DamnedAngel/msx-tile-forge.git
         tag: v01.00.00_rc20_5
         commit: 9d5ee12897f7cff657c396c8afe05dec1465beaf
+      # temporary, for building test only
+      # begin
+      - type: archive
+        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v3.tar.gz
+        sha256: cb09bd15ad38b4647f327fcbe4a49a0f2f288632dde54a2cc04bd8d3c6f3ecd0
+        dest: temp
+      # end 
     build-commands:
-      - cd flatpak
-      - make all APP_VERSION=${APP_VERSION} FLATPAK_ID=${FLATPAK_ID}
+      # temporary, for building test only
+      # begin
+      - mv temp/flatpak .   
+      # end 
+      - sh flatpak/build.sh
 
