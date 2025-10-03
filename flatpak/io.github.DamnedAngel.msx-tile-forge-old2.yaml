@@ -239,7 +239,12 @@ modules:
         url: https://github.com/DamnedAngel/msx-tile-forge.git
         tag: v01.00.00_rc20_5
         commit: 9d5ee12897f7cff657c396c8afe05dec1465beaf
+      - type: archive
+        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v1.tar.gz
+        sha256: fe17c28ad6204874f7f6cb762a0c27d8bb827a454d2ea9f234e28324dc1ce8d6
+        dest: temp
     build-commands:
+      - mv temp/flatpak .
       - find . -type f -name "*.py" -exec sed -i "s/<unreleased>/${APP_VERSION}/g" {} +
       - install -Dm644 msxtileforge.py /app/bin/msxtileforge.py
       - install -Dm644 msxtileexport.py /app/bin/msxtileexport.py
