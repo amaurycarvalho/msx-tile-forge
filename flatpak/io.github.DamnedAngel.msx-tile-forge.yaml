@@ -1,6 +1,6 @@
 app-id: io.github.DamnedAngel.msx-tile-forge
 runtime: org.freedesktop.Platform
-runtime-version: "25.08"
+runtime-version: "24.08"
 sdk: org.freedesktop.Sdk
 
 command: msxtileforge
@@ -76,20 +76,22 @@ modules:
           - /share/doc
 
   # numpy dependencies
-  - name: meson-python 
+  - name: numpy-deps
     buildsystem: simple
     build-commands:
       - pip3 install --no-index --exists-action=i --find-links=file://${PWD} --prefix=${FLATPAK_DEST} meson-python
     sources:
+      # meson-python
       - type: file
         url: https://files.pythonhosted.org/packages/28/58/66db620a8a7ccb32633de9f403fe49f1b63c68ca94e5c340ec5cceeb9821/meson_python-0.18.0-py3-none-any.whl
         sha256: 3b0fe051551cc238f5febb873247c0949cd60ded556efa130aa57021804868e2
+      # pyproject-metadata
       - type: file
         url: https://files.pythonhosted.org/packages/7e/b1/8e63033b259e0a4e40dd1ec4a9fee17718016845048b43a36ec67d62e6fe/pyproject_metadata-0.9.1-py3-none-any.whl
         sha256: ee5efde548c3ed9b75a354fc319d5afd25e9585fa918a34f62f904cc731973ad
-      - type: file
-        url: https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl
-        sha256: 29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484
+      #- type: file
+      #  url: https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl
+      #  sha256: 29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484
     cleanup:
       - '*'
 
@@ -224,14 +226,13 @@ modules:
       env:
         APP_VERSION: 01.00.00_rc20_5
     sources:
+      - type: archive
+        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v1.tar.gz
+        sha256: fe17c28ad6204874f7f6cb762a0c27d8bb827a454d2ea9f234e28324dc1ce8d6
       - type: git
         url: https://github.com/DamnedAngel/msx-tile-forge.git
         tag: v01.00.00_rc20_5
         commit: 9d5ee12897f7cff657c396c8afe05dec1465beaf
-      - type: git
-        url: https://github.com/amaurycarvalho/msx-tile-forge.git
-        tag: feature/flatpak_1
-        commit: f579f40cd8e074225657b69f69279a2574920d82
     build-commands:
       - find . -type f -name "*.py" -exec sed -i "s/<unreleased>/${APP_VERSION}/g" {} +
       - install -Dm644 msxtileforge.py /app/bin/msxtileforge.py

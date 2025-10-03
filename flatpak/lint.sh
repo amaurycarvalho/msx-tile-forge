@@ -1,6 +1,8 @@
-# python wheels source: https://pypi.org/
 # Clean old builds
 rm -rf build-dir
+
+# Show flatpak runtime installed python version
+flatpak run --command=python3 org.freedesktop.Platform//24.08 --version
 
 # Lint manifest
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.DamnedAngel.msx-tile-forge.yaml

@@ -17,7 +17,7 @@ flatpak run io.github.DamnedAngel.msx-tile-forge
 
 ## Developer Guide
 
-If you're new about flathub, it's a good idea to read [submission](https://docs.flathub.org/docs/for-app-authors/submission), [maintenance](https://docs.flathub.org/docs/for-app-authors/maintenance) and [updates](https://docs.flathub.org/docs/for-app-authors/updates) guides.
+If you're new about flathub, it's a good idea to read [submission](https://docs.flathub.org/docs/for-app-authors/submission), [maintenance](https://docs.flathub.org/docs/for-app-authors/maintenance) and [updates](https://docs.flathub.org/docs/for-app-authors/updates) guides. Also, see [python wheels](https://pypi.org/) if you need include more python dependencies into `flatpak/io.github.DamnedAngel.msx-tile-forge.yaml`.
 
 ### How to get Flathub project repo
 
