@@ -12,6 +12,7 @@ finish-args:
   - --share=network
   - --socket=pulseaudio
   - --device=dri
+  - --filesystem=xdg-config/fontconfig:ro
   - --filesystem=xdg-documents
 
 cleanup:
@@ -199,8 +200,8 @@ modules:
       # temporary, for building test only
       # begin
       - type: archive
-        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v3.tar.gz
-        sha256: cb09bd15ad38b4647f327fcbe4a49a0f2f288632dde54a2cc04bd8d3c6f3ecd0
+        url: https://github.com/amaurycarvalho/msx-tile-forge/archive/refs/tags/flathub_v4.tar.gz
+        sha256: db712553acb98e47867b87960af0af1126b0fc1cced85bbf6a8d3e203c32fec5
         dest: temp
       # end 
     build-commands:
@@ -208,5 +209,5 @@ modules:
       # begin
       - mv temp/flatpak .   
       # end 
-      - sh flatpak/build.sh
+      - make -C flatpak install
 
